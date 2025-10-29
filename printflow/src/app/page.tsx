@@ -1,66 +1,93 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
 
-export default function Home() {
+import { useState, ChangeEvent, FormEvent } from 'react';
+
+export default function DocumentUpload() {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [message, setMessage] = useState<string>('');
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files ? event.target.files[0] : null;
+    setSelectedFile(file);
+    setMessage('');
+  };
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selectedFile) {
+      setMessage('Por favor, selecciona un archivo primero.');
+      return;
+    }
+    setMessage('Subiendo...');
+
+    // La lógica de envío con FormData se mantiene igual
+    const formData = new FormData();
+    formData.append('document', selectedFile);
+
+    try {
+      // **IMPORTANTE:** Asegúrate de que esta URL sea la ruta de tu API de Next.js
+      const response = await fetch('/api/upload', { 
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage(`¡Éxito! Archivo guardado. Nombre: ${data.fileName}`);
+        setSelectedFile(null);
+      } else {
+        setMessage(`Error al subir: ${data.message || 'Fallo desconocido'}`);
+      }
+    } catch (error) {
+      setMessage('Ocurrió un error inesperado al subir el archivo.');
+    }
+  };
+
+  const isSubmitting = message === 'Subiendo...';
+  const isError = message.startsWith('Error');
+  const isSuccess = message.startsWith('¡Éxito');
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="flex-container">
+      <div className="card-container">
+        <h1 className="main-title">📄 Subir Documento</h1>
+        <p className="subtitle">Formatos aceptados: PDF, Word (.doc, .docx)</p>
+
+        <form onSubmit={handleSubmit} className="form-layout">
+          <input
+            type="file"
+            onChange={handleFileChange}
+            required
+            accept=".pdf, .doc, .docx" 
+            className="file-input"
+          />
+          
+          <button
+            type="submit"
+            disabled={!selectedFile || isSubmitting}
+            // Clases puras basadas en el estado
+            className={`submit-button ${!selectedFile || isSubmitting ? 'disabled' : 'active'}`}
           >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+            {isSubmitting ? 'Procesando...' : 'Subir Documento'}
+          </button>
+        </form>
+
+        {(selectedFile || message) && (
+          <div className="message-container">
+            {selectedFile && (
+              <p className="selected-file-info">
+                Archivo seleccionado: <strong>{selectedFile.name}</strong>
+              </p>
+            )}
+            {message && (
+              <p className={`status-msg ${isError ? 'error' : isSuccess ? 'success' : ''}`}>
+                {message}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
